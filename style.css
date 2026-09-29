@@ -749,3 +749,39 @@ h3{margin:0 0 10px}
   .run-summary{grid-template-columns:repeat(2,1fr)}
   .comparison-grid{grid-template-columns:1fr}
 }
+
+.sdt-area-stats{
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:8px;
+  margin-top:10px;
+}
+
+.sdt-area-item{
+  padding:9px 10px;
+  border:1px solid #20354a;
+  border-radius:10px;
+  background:#09131f;
+  text-align:center;
+}
+
+.sdt-area-item span{
+  display:block;
+  color:var(--muted);
+  font-size:11px;
+}
+
+.sdt-area-item b{
+  display:block;
+  margin-top:3px;
+  font-size:16px;
+}
+
+.sdt-area-item.cr b{color:#8fdcff}
+.sdt-area-item.fa b{color:#ff9aa5}
+.sdt-area-item.miss b{color:#ffd98e}
+.sdt-area-item.hit b{color:#9ce7c7}
+
+@media(max-width:700px){
+  .sdt-area-stats{grid-template-columns:repeat(2,1fr)}
+}
