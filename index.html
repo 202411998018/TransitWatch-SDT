@@ -9,8 +9,8 @@
 <body>
   <div class="shell">
     <header class="topbar">
-      <div class="brand"><span class="brand-mark">✦</span>TransitWatch Lab</div>
-      <div class="status">Exoplanet Transit Detection Experiment</div>
+      <div class="brand"><span class="brand-mark">✦</span>TransitWatch 实验室</div>
+      <div class="status">系外行星凌星检测实验</div>
     </header>
 
     <main>
@@ -18,7 +18,7 @@
       <section id="home" class="page active">
         <div class="hero">
           <div class="hero-copy">
-            <div class="eyebrow">Exoplanet Survey Mission</div>
+            <div class="eyebrow">系外行星观测任务</div>
             <h1>从恒星光变中<br>寻找隐藏的行星。</h1>
             <p>
               你将扮演天文观测员，快速筛查恒星亮度随时间变化的光变曲线，
@@ -40,7 +40,7 @@
       <!-- TUTORIAL -->
       <section id="tutorial" class="page">
         <div class="card">
-          <div class="eyebrow">Mission Tutorial</div>
+          <div class="eyebrow">任务教程</div>
           <h2>先认识什么是“凌星”</h2>
           <p class="muted tutorial-lead">
             当一颗行星从恒星前方经过时，会遮挡一小部分恒星光线，因此光变曲线会出现
@@ -52,7 +52,7 @@
             <article class="tutorial-card">
               <div class="example-title">
                 <div>
-                  <span class="example-badge transit">TRANSIT</span>
+                  <span class="example-badge transit">有凌星</span>
                   <h3>示例 A · 有凌星</h3>
                 </div>
                 <span class="example-answer">应该选择“检测到凌星”</span>
@@ -66,7 +66,7 @@
             <article class="tutorial-card">
               <div class="example-title">
                 <div>
-                  <span class="example-badge noise">NO TRANSIT</span>
+                  <span class="example-badge noise">无凌星</span>
                   <h3>示例 B · 无凌星</h3>
                 </div>
                 <span class="example-answer">应该选择“未检测到凌星”</span>
@@ -85,7 +85,7 @@
 
           <div class="footer-actions">
             <button class="btn secondary" data-page="home">返回</button>
-            <button id="startPracticeBtn" class="btn primary">开始练习</button>
+            <button id="start练习阶段Btn" class="btn primary">开始练习</button>
           </div>
         </div>
       </section>
@@ -95,8 +95,8 @@
         <div class="experiment-wrap">
           <div class="monitor">
             <div class="monitor-top">
-              <span id="practiceLabel">PRACTICE 1 / 5</span>
-              <span>TUTORIAL MODE</span>
+              <span id="practiceLabel">练习 1 / 5</span>
+              <span>练习模式</span>
             </div>
             <div class="chart-frame">
               <canvas id="practiceCurve" width="900" height="520"></canvas>
@@ -109,7 +109,7 @@
           </div>
 
           <aside class="card sidebar">
-            <div class="eyebrow">Practice</div>
+            <div class="eyebrow">练习阶段</div>
             <h3>练习提示</h3>
             <div class="metric"><span>连续下降</span><b>✓</b></div>
             <div class="metric"><span>低亮度持续一小段</span><b>✓</b></div>
@@ -123,7 +123,7 @@
       <section id="settings" class="page">
         <div class="card settings">
           <div>
-            <div class="eyebrow">Mission Settings</div>
+            <div class="eyebrow">实验设置</div>
             <h2>正式实验参数</h2>
             <p class="muted">正式试次每题统一限时 4 秒；难度只改变光变曲线本身。</p>
           </div>
@@ -171,8 +171,8 @@
         <div class="experiment-wrap">
           <div class="monitor">
             <div class="monitor-top">
-              <span id="starLabel">TARGET STAR K-1842</span>
-              <span>RELATIVE FLUX MONITOR</span>
+              <span id="starLabel">目标恒星 K-1842</span>
+              <span>相对亮度监测</span>
             </div>
             <div class="chart-frame">
               <canvas id="lightcurve" width="900" height="520"></canvas>
@@ -185,7 +185,7 @@
           </div>
 
           <aside class="card sidebar">
-            <div class="eyebrow">Live Session</div>
+            <div class="eyebrow">正式实验</div>
             <h3>观测状态</h3>
             <div class="metric"><span>试次</span><b id="trialNow">1 / 30</b></div>
             <div class="metric"><span>凌星概率</span><b id="expPrev">35%</b></div>
@@ -208,15 +208,40 @@
       <!-- RESULTS -->
       <section id="results" class="page">
         <div class="card">
-          <div class="eyebrow">Mission Report</div>
+          <div class="eyebrow">实验结果</div>
           <h2>本次凌星检测结果</h2>
 
-          <div class="result-grid">
-            <div class="result-box"><span>Hit · 命中</span><b id="rHit">0</b></div>
-            <div class="result-box"><span>Miss · 漏检</span><b id="rMiss">0</b></div>
-            <div class="result-box"><span>False Alarm · 虚警</span><b id="rFA">0</b></div>
-            <div class="result-box"><span>Correct Rejection</span><b id="rCR">0</b></div>
+          <div class="run-summary">
+            <div class="summary-pill"><span>难度</span><b id="summaryDifficulty">—</b></div>
+            <div class="summary-pill"><span>目标 P(S)</span><b id="summaryTargetP">—</b></div>
+            <div class="summary-pill"><span>实际信号比例</span><b id="summaryRealizedP">—</b></div>
+            <div class="summary-pill"><span>总试次数</span><b id="summaryTrials">—</b></div>
           </div>
+
+          <div class="result-grid">
+            <div class="result-box">
+              <span>命中</span><b id="rHit">0</b>
+              <small class="result-desc">有凌星，并正确报告检测到凌星</small>
+            </div>
+            <div class="result-box">
+              <span>漏报</span><b id="rMiss">0</b>
+              <small class="result-desc">有凌星，但报告未检测到凌星</small>
+            </div>
+            <div class="result-box">
+              <span>虚警</span><b id="rFA">0</b>
+              <small class="result-desc">没有凌星，却报告检测到凌星</small>
+            </div>
+            <div class="result-box">
+              <span>正确拒绝</span><b id="rCR">0</b>
+              <small class="result-desc">没有凌星，并正确报告未检测到凌星</small>
+            </div>
+            <div class="result-box">
+              <span>超时</span><b id="rTimeout">0</b>
+              <small class="result-desc">4 秒内未作答；不纳入 SDT 指标计算</small>
+            </div>
+          </div>
+
+          <div id="timeoutNote" class="warning-note hidden"></div>
 
           <div class="result-main">
             <div class="result-box">
@@ -234,10 +259,11 @@
           </div>
 
           <div class="kpis">
-            <div class="kpi"><span class="muted">Hit Rate</span><b id="rHR">0%</b></div>
-            <div class="kpi"><span class="muted">False Alarm Rate</span><b id="rFAR">0%</b></div>
-            <div class="kpi"><span class="muted">Accuracy</span><b id="rAcc">0%</b></div>
-            <div class="kpi"><span class="muted">Mean RT</span><b id="rRT">0 ms</b></div>
+            <div class="kpi"><span class="muted">命中率</span><b id="rHR">0%</b></div>
+            <div class="kpi"><span class="muted">虚警率</span><b id="rFAR">0%</b></div>
+            <div class="kpi"><span class="muted">正确率</span><b id="rAcc">0%</b></div>
+            <div class="kpi"><span class="muted">平均反应时</span><b id="rRT">0 ms</b></div>
+            <div class="kpi"><span class="muted">有效反应</span><b id="rValid">0 / 0</b></div>
           </div>
 
           <div class="chart-grid">
@@ -250,8 +276,8 @@
               </div>
               <canvas id="observedRoc" width="680" height="320"></canvas>
               <div class="legend">
-                <span><i class="legend-dot observed"></i>Observed operating point</span>
-                <span><i class="legend-dot chance"></i>Chance line</span>
+                <span><i class="legend-dot observed"></i>本轮经验点</span>
+                <span><i class="legend-dot chance"></i>随机水平线</span>
               </div>
             </div>
 
@@ -263,18 +289,19 @@
                 </div>
               </div>
               <div class="small-table">
-                <div class="small-pill"><span class="muted">Observed FA</span><b id="obsFA">0.00</b></div>
-                <div class="small-pill"><span class="muted">Observed Hit</span><b id="obsHit">0.00</b></div>
+                <div class="small-pill"><span class="muted">经验虚警率</span><b id="obsFA">0.00</b></div>
+                <div class="small-pill"><span class="muted">经验命中率</span><b id="obsHit">0.00</b></div>
               </div>
               <div class="note">
                 下方完整 ROC 曲线属于等方差信号检测模型下的理论曲线，
-                并不是这一轮实验直接测得的一整条经验 ROC。
+                并不是这一轮实验直接测得的一整条经验 ROC。超时试次单独报告，
+                不纳入命中率、虚警率、d′ 和判断标准 c 的计算。
               </div>
             </div>
           </div>
 
           <div class="explorer card">
-            <div class="eyebrow">Interactive SDT Explorer</div>
+            <div class="eyebrow">交互式信号检测模型</div>
             <h2>交互式信号检测模型</h2>
             <p class="muted">
               初始值来自刚才的实验结果。拖动 d′ 与 c，观察分布、Hit/FA 和理论 ROC 如何变化。
@@ -283,16 +310,16 @@
             <div class="explorer-controls">
               <div class="control-card">
                 <label>
-                  <span>Sensitivity · d′</span>
+                  <span>辨别力 d′</span>
                   <b id="dSliderVal">1.50</b>
                 </label>
                 <input id="dSlider" type="range" min="0" max="3.5" step="0.05" value="1.5" />
-                <p class="muted">d′ 增大：Signal 与 Noise 分布分得更开。</p>
+                <p class="muted">d′ 增大：信号分布与噪声分布分得更开。</p>
               </div>
 
               <div class="control-card">
                 <label>
-                  <span>Decision criterion · c</span>
+                  <span>判断标准 c</span>
                   <b id="cSliderVal">0.00</b>
                 </label>
                 <input id="cSlider" type="range" min="-2" max="2" step="0.05" value="0" />
@@ -300,10 +327,14 @@
               </div>
             </div>
 
-            <div class="chart-grid">
+            <div class="reset-row">
+            <button id="resetExplorerBtn" class="btn secondary">恢复本轮实验估计值</button>
+          </div>
+
+          <div class="chart-grid">
               <div class="chart-card">
                 <div class="chart-head">
-                  <div><h3>Signal / Noise 分布</h3><span>黄色虚线为 criterion</span></div>
+                  <div><h3>信号 / 噪声分布</h3><span>黄色虚线为 判断标准</span></div>
                 </div>
                 <canvas id="distChart" width="680" height="320"></canvas>
               </div>
@@ -316,10 +347,42 @@
             </div>
 
             <div class="live-stats">
-              <div class="live-stat"><span class="muted">Theory Hit Rate</span><b id="theoryHit">0.50</b></div>
-              <div class="live-stat"><span class="muted">Theory FA Rate</span><b id="theoryFA">0.50</b></div>
-              <div class="live-stat"><span class="muted">Criterion</span><b id="theoryC">0.00</b></div>
+              <div class="live-stat"><span class="muted">理论命中率</span><b id="theoryHit">0.50</b></div>
+              <div class="live-stat"><span class="muted">理论虚警率</span><b id="theoryFA">0.50</b></div>
+              <div class="live-stat"><span class="muted">判断标准</span><b id="theoryC">0.00</b></div>
               <div class="live-stat"><span class="muted">AUC</span><b id="theoryAuc">0.50</b></div>
+            </div>
+          </div>
+
+          <div class="run-history card">
+            <div class="eyebrow">多轮比较</div>
+            <h2>不同实验轮次的结果</h2>
+            <p class="muted">每完成一轮正式实验，本页会保留该轮的 d′、判断标准 c、正确率和平均反应时，便于比较不同难度或 P(S) 条件。</p>
+
+            <div id="runHistoryEmpty" class="note">完成至少一轮正式实验后，这里会显示比较结果。</div>
+
+            <div id="runHistoryContent" class="hidden">
+              <div class="run-history-table-wrap">
+                <table class="run-history-table">
+                  <thead>
+                    <tr>
+                      <th>轮次</th><th>难度</th><th>目标 P(S)</th><th>实际信号比例</th>
+                      <th>d′</th><th>c</th><th>正确率</th><th>平均反应时</th><th>超时</th>
+                    </tr>
+                  </thead>
+                  <tbody id="runHistoryBody"></tbody>
+                </table>
+              </div>
+              <div class="comparison-grid">
+                <div class="chart-card">
+                  <div class="chart-head"><div><h3>d′ 跨轮次比较</h3><span>辨别力</span></div></div>
+                  <canvas id="dprimeHistoryChart" width="560" height="300"></canvas>
+                </div>
+                <div class="chart-card">
+                  <div class="chart-head"><div><h3>c 跨轮次比较</h3><span>判断标准</span></div></div>
+                  <canvas id="criterionHistoryChart" width="560" height="300"></canvas>
+                </div>
+              </div>
             </div>
           </div>
 
