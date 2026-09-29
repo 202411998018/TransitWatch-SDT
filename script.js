@@ -616,7 +616,7 @@
     const zF = normInv(falseAlarmRateCorrected);
 
     const dPrime = zH - zF;
-    const 判断标准C = -0.5 * (zH + zF);
+    const criterionC = -0.5 * (zH + zF);
 
     const accuracy = valid.length ? (hit + cr) / valid.length : 0;
     const meanRT = valid.length
@@ -625,7 +625,7 @@
 
     state.lastResult = {
       dPrime,
-      c: 判断标准C,
+      c: criterionC,
       hitRate: hitRateRaw,
       falseAlarmRate: falseAlarmRateRaw
     };
@@ -643,7 +643,7 @@
     $("rValid").textContent = `${valid.length} / ${state.trials.length}`;
 
     $("rDprime").textContent = dPrime.toFixed(2);
-    $("rC").textContent = 判断标准C.toFixed(2);
+    $("rC").textContent = criterionC.toFixed(2);
     $("obsFA").textContent = falseAlarmRateRaw.toFixed(2);
     $("obsHit").textContent = hitRateRaw.toFixed(2);
 
@@ -654,8 +654,8 @@
       "区分能力较弱";
 
     $("cTag").textContent =
-      判断标准C > 0.25 ? "偏保守" :
-      判断标准C < -0.25 ? "偏宽松" :
+      criterionC > 0.25 ? "偏保守" :
+      criterionC < -0.25 ? "偏宽松" :
       "判断标准较中性";
 
     const cfg = state.currentRunConfig || {
@@ -684,7 +684,7 @@
     drawObservedROC(falseAlarmRateRaw, hitRateRaw);
 
     $("dSlider").value = clamp(dPrime, 0, 3.5).toFixed(2);
-    $("cSlider").value = clamp(判断标准C, -2, 2).toFixed(2);
+    $("cSlider").value = clamp(criterionC, -2, 2).toFixed(2);
     updateExplorer();
 
     const run = {
@@ -696,7 +696,7 @@
       valid: valid.length,
       timeout,
       dPrime,
-      c: 判断标准C,
+      c: criterionC,
       accuracy,
       meanRT
     };
@@ -777,7 +777,7 @@
     // Equal-variance SDT:
     // noise mean = 0
     // signal mean = d'
-    // 判断标准 location k = c + d'/2
+    // criterion location k = c + d'/2
     const k = c + d / 2;
 
     const fa =
@@ -816,7 +816,7 @@
     const innerW = w - margin.l - margin.r;
     const innerH = h - margin.t - margin.b;
 
-    const 判断标准 = c + d / 2;
+    const criterion = c + d / 2;
     const xmin = -3.5;
     const xmax = Math.max(3.5, d + 3.5);
 
@@ -843,10 +843,10 @@
     }
 
     // Four SDT outcome regions: CR/FA under noise, Miss/Hit under signal.
-    shadeRange(ctx, xmin, 判断标准, (x) => pdf(x, 0), xScale, yScale, h, margin, "rgba(124,215,255,.08)");
-    shadeRange(ctx, 判断标准, xmax, (x) => pdf(x, 0), xScale, yScale, h, margin, "rgba(255,126,140,.10)");
-    shadeRange(ctx, xmin, 判断标准, (x) => pdf(x, d), xScale, yScale, h, margin, "rgba(255,201,107,.08)");
-    shadeRange(ctx, 判断标准, xmax, (x) => pdf(x, d), xScale, yScale, h, margin, "rgba(126,224,181,.10)");
+    shadeRange(ctx, xmin, criterion, (x) => pdf(x, 0), xScale, yScale, h, margin, "rgba(124,215,255,.08)");
+    shadeRange(ctx, criterion, xmax, (x) => pdf(x, 0), xScale, yScale, h, margin, "rgba(255,126,140,.10)");
+    shadeRange(ctx, xmin, criterion, (x) => pdf(x, d), xScale, yScale, h, margin, "rgba(255,201,107,.08)");
+    shadeRange(ctx, criterion, xmax, (x) => pdf(x, d), xScale, yScale, h, margin, "rgba(126,224,181,.10)");
 
     drawFunctionCurve(ctx, (x) => pdf(x, 0), xmin, xmax, xScale, yScale, "#7cd7ff", 3);
     drawFunctionCurve(ctx, (x) => pdf(x, d), xmin, xmax, xScale, yScale, "#b8a6ff", 3);
@@ -855,8 +855,8 @@
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 6]);
     ctx.beginPath();
-    ctx.moveTo(xScale(判断标准), margin.t);
-    ctx.lineTo(xScale(判断标准), h - margin.b);
+    ctx.moveTo(xScale(criterion), margin.t);
+    ctx.lineTo(xScale(criterion), h - margin.b);
     ctx.stroke();
     ctx.setLineDash([]);
 
@@ -866,11 +866,11 @@
     ctx.fillText("信号", xScale(d) - 18, yScale(pdf(d, d)) - 10);
 
     ctx.fillStyle = "#ffc96b";
-    ctx.fillText("判断标准", Math.min(xScale(判断标准) + 8, w - 90), margin.t + 18);
+    ctx.fillText("判断标准", Math.min(xScale(criterion) + 8, w - 90), margin.t + 18);
 
     ctx.font = "12px sans-serif";
-    const leftX = xScale(Math.max(xmin + 0.7, 判断标准 - 1.25));
-    const rightX = xScale(Math.min(xmax - 1.0, 判断标准 + 0.55));
+    const leftX = xScale(Math.max(xmin + 0.7, criterion - 1.25));
+    const rightX = xScale(Math.min(xmax - 1.0, criterion + 0.55));
 
     ctx.fillStyle = "#8fdcff";
     ctx.fillText("正确拒绝", leftX, h - margin.b - 54);
@@ -1140,7 +1140,7 @@
     `).join("");
 
     drawHistoryChart($("dprimeHistoryChart"), state.runHistory.map(r => r.dPrime), "d′");
-    drawHistoryChart($("判断标准HistoryChart"), state.runHistory.map(r => r.c), "c", true);
+    drawHistoryChart($("criterionHistoryChart"), state.runHistory.map(r => r.c), "c", true);
   }
 
   function drawHistoryChart(canvas, values, label, includeZero = false) {
