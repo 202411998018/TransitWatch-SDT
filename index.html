@@ -237,7 +237,7 @@
             </div>
             <div class="result-box">
               <span>超时</span><b id="rTimeout">0</b>
-              <small class="result-desc">4 秒内未作答；不纳入 SDT 指标计算</small>
+              <small class="result-desc">4 秒内未作答；不纳入信号检测指标计算</small>
             </div>
           </div>
 
@@ -271,7 +271,7 @@
               <div class="chart-head">
                 <div>
                   <h3>本轮经验 ROC 点</h3>
-                  <span>固定二元判断条件下，本轮只直接观测到一个 operating point</span>
+                  <span>固定二元判断条件下，本轮只直接观测到一个经验工作点</span>
                 </div>
               </div>
               <canvas id="observedRoc" width="680" height="320"></canvas>
@@ -304,7 +304,7 @@
             <div class="eyebrow">交互式信号检测模型</div>
             <h2>交互式信号检测模型</h2>
             <p class="muted">
-              初始值来自刚才的实验结果。拖动 d′ 与 c，观察分布、Hit/FA 和理论 ROC 如何变化。
+              初始值来自刚才的实验结果。拖动 d′ 与 c，观察分布、命中率/虚警率和理论 ROC 如何变化。
             </p>
 
             <div class="explorer-controls">
@@ -334,7 +334,7 @@
           <div class="chart-grid">
               <div class="chart-card">
                 <div class="chart-head">
-                  <div><h3>信号 / 噪声分布</h3><span>黄色虚线为 判断标准</span></div>
+                  <div><h3>信号 / 噪声分布</h3><span>黄色虚线为判断标准</span></div>
                 </div>
                 <canvas id="distChart" width="680" height="320"></canvas>
               </div>
