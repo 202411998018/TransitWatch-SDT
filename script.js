@@ -13,7 +13,9 @@
     practiceTrials: [],
     practiceIndex: 0,
     practiceCurrent: null,
-    lastResult: { dPrime: 1.5, c: 0, hitRate: 0.5, falseAlarmRate: 0.5 }
+    lastResult: { dPrime: 1.5, c: 0, hitRate: 0.5, falseAlarmRate: 0.5 },
+    currentRunConfig: null,
+    runHistory: loadRunHistory()
   };
 
   const $ = (id) => document.getElementById(id);
@@ -28,6 +30,7 @@
     bindExplorer();
 
     drawTutorialExamples();
+    renderRunHistory();
     showPage("home");
   }
 
@@ -81,6 +84,7 @@
   function bindExplorer() {
     $("dSlider").addEventListener("input", updateExplorer);
     $("cSlider").addEventListener("input", updateExplorer);
+    $("resetExplorerBtn").addEventListener("click", resetExplorerToObserved);
   }
 
   function showPage(id) {
@@ -190,7 +194,7 @@
     };
 
     $("practiceLabel").textContent =
-      `PRACTICE ${state.practiceIndex + 1} / ${state.practiceTrials.length}`;
+      `练习 ${state.practiceIndex + 1} / ${state.practiceTrials.length}`;
 
     $("practiceFeedback").className = "practice-feedback";
     $("practiceFeedback").textContent = "";
@@ -248,10 +252,26 @@
     const n = Number($("trialCount").value);
     const pSignal = Number($("prevalence").value) / 100;
 
-    state.trials = Array.from({ length: n }, (_, i) => ({
+    // Pre-allocate the number of signal/noise trials so the selected P(S)
+    // is controlled within each run, then randomize trial order.
+    const nSignal = Math.max(1, Math.min(n - 1, Math.round(n * pSignal)));
+    const flags = shuffle([
+      ...Array(nSignal).fill(true),
+      ...Array(n - nSignal).fill(false)
+    ]);
+
+    state.trials = flags.map((signal, i) => ({
       index: i + 1,
-      signal: Math.random() < pSignal
+      signal
     }));
+
+    state.currentRunConfig = {
+      difficulty: state.difficulty,
+      targetP: pSignal,
+      nSignal,
+      nTotal: n,
+      realizedP: nSignal / n
+    };
 
     state.trialIndex = 0;
     state.currentStimulus = null;
@@ -286,7 +306,7 @@
       `${(state.trialIndex / state.trials.length) * 100}%`;
 
     $("starLabel").textContent =
-      `TARGET STAR K-${1800 + state.trialIndex * 7}`;
+      `目标恒星 K-${1800 + state.trialIndex * 7}`;
 
     drawLightCurveCanvas($("lightcurve"), stimulus.data, null, []);
 
@@ -559,12 +579,12 @@
       ctx.fillText(v.toFixed(2), 18, yScale(v) + 4);
     });
 
-    ctx.fillText("Observation Time", w / 2 - 42, h - 15);
+    ctx.fillText("观测时间", w / 2 - 42, h - 15);
 
     ctx.save();
     ctx.translate(16, h / 2 + 40);
     ctx.rotate(-Math.PI / 2);
-    ctx.fillText("Relative Brightness", 0, 0);
+    ctx.fillText("相对亮度", 0, 0);
     ctx.restore();
   }
 
@@ -574,56 +594,38 @@
   function finishExperiment() {
     $("progressFill").style.width = "100%";
 
-    const valid = state.trials.filter((t) => t.outcome !== "timeout");
+    const valid = state.trials.filter((t) => t.outcome && t.outcome !== "timeout");
+    const timeout = state.trials.filter((t) => t.outcome === "timeout").length;
 
-    const hit =
-      valid.filter((t) => t.outcome === "hit").length;
-
-    const miss =
-      valid.filter((t) => t.outcome === "miss").length;
-
-    const fa =
-      valid.filter((t) => t.outcome === "fa").length;
-
-    const cr =
-      valid.filter((t) => t.outcome === "cr").length;
+    const hit = valid.filter((t) => t.outcome === "hit").length;
+    const miss = valid.filter((t) => t.outcome === "miss").length;
+    const fa = valid.filter((t) => t.outcome === "fa").length;
+    const cr = valid.filter((t) => t.outcome === "cr").length;
 
     const nSignal = hit + miss;
     const nNoise = fa + cr;
 
-    const hitRateRaw =
-      nSignal ? hit / nSignal : 0;
-
-    const falseAlarmRateRaw =
-      nNoise ? fa / nNoise : 0;
+    const hitRateRaw = nSignal ? hit / nSignal : 0;
+    const falseAlarmRateRaw = nNoise ? fa / nNoise : 0;
 
     // Log-linear correction avoids infinite z scores at rates of 0 or 1.
-    const hitRateCorrected =
-      nSignal ? (hit + 0.5) / (nSignal + 1) : 0.5;
-
-    const falseAlarmRateCorrected =
-      nNoise ? (fa + 0.5) / (nNoise + 1) : 0.5;
+    const hitRateCorrected = nSignal ? (hit + 0.5) / (nSignal + 1) : 0.5;
+    const falseAlarmRateCorrected = nNoise ? (fa + 0.5) / (nNoise + 1) : 0.5;
 
     const zH = normInv(hitRateCorrected);
     const zF = normInv(falseAlarmRateCorrected);
 
     const dPrime = zH - zF;
-    const criterionC = -0.5 * (zH + zF);
+    const 判断标准C = -0.5 * (zH + zF);
 
-    const accuracy =
-      valid.length ? (hit + cr) / valid.length : 0;
-
-    const meanRT =
-      valid.length
-        ? Math.round(
-            valid.reduce((sum, t) => sum + t.rt, 0) /
-            valid.length
-          )
-        : 0;
+    const accuracy = valid.length ? (hit + cr) / valid.length : 0;
+    const meanRT = valid.length
+      ? Math.round(valid.reduce((sum, t) => sum + t.rt, 0) / valid.length)
+      : 0;
 
     state.lastResult = {
       dPrime,
-      c: criterionC,
+      c: 判断标准C,
       hitRate: hitRateRaw,
       falseAlarmRate: falseAlarmRateRaw
     };
@@ -632,56 +634,77 @@
     $("rMiss").textContent = miss;
     $("rFA").textContent = fa;
     $("rCR").textContent = cr;
+    $("rTimeout").textContent = timeout;
 
-    $("rHR").textContent =
-      `${(hitRateRaw * 100).toFixed(1)}%`;
+    $("rHR").textContent = `${(hitRateRaw * 100).toFixed(1)}%`;
+    $("rFAR").textContent = `${(falseAlarmRateRaw * 100).toFixed(1)}%`;
+    $("rAcc").textContent = `${(accuracy * 100).toFixed(1)}%`;
+    $("rRT").textContent = `${meanRT} ms`;
+    $("rValid").textContent = `${valid.length} / ${state.trials.length}`;
 
-    $("rFAR").textContent =
-      `${(falseAlarmRateRaw * 100).toFixed(1)}%`;
-
-    $("rAcc").textContent =
-      `${(accuracy * 100).toFixed(1)}%`;
-
-    $("rRT").textContent =
-      `${meanRT} ms`;
-
-    $("rDprime").textContent =
-      dPrime.toFixed(2);
-
-    $("rC").textContent =
-      criterionC.toFixed(2);
-
-    $("obsFA").textContent =
-      falseAlarmRateRaw.toFixed(2);
-
-    $("obsHit").textContent =
-      hitRateRaw.toFixed(2);
+    $("rDprime").textContent = dPrime.toFixed(2);
+    $("rC").textContent = 判断标准C.toFixed(2);
+    $("obsFA").textContent = falseAlarmRateRaw.toFixed(2);
+    $("obsHit").textContent = hitRateRaw.toFixed(2);
 
     $("dprimeTag").textContent =
-      dPrime >= 2
-        ? "区分能力较强"
-        : dPrime >= 1
-        ? "区分能力中等"
-        : dPrime >= 0.5
-        ? "区分能力有限"
-        : "区分能力较弱";
+      dPrime >= 2 ? "区分能力较强" :
+      dPrime >= 1 ? "区分能力中等" :
+      dPrime >= 0.5 ? "区分能力有限" :
+      "区分能力较弱";
 
     $("cTag").textContent =
-      criterionC > 0.25
-        ? "偏保守"
-        : criterionC < -0.25
-        ? "偏宽松"
-        : "判断标准较中性";
+      判断标准C > 0.25 ? "偏保守" :
+      判断标准C < -0.25 ? "偏宽松" :
+      "判断标准较中性";
+
+    const cfg = state.currentRunConfig || {
+      difficulty: state.difficulty,
+      targetP: 0,
+      realizedP: 0,
+      nTotal: state.trials.length
+    };
+
+    $("summaryDifficulty").textContent = difficultyLabel(cfg.difficulty);
+    $("summaryTargetP").textContent = `${(cfg.targetP * 100).toFixed(0)}%`;
+    $("summaryRealizedP").textContent = `${(cfg.realizedP * 100).toFixed(1)}%`;
+    $("summaryTrials").textContent = cfg.nTotal;
+
+    const timeoutRate = state.trials.length ? timeout / state.trials.length : 0;
+    const timeoutNote = $("timeoutNote");
+    if (timeoutRate > 0.20) {
+      timeoutNote.textContent =
+        `本轮超时率为 ${(timeoutRate * 100).toFixed(1)}%，有效反应较少，d′ 与判断标准 c 应谨慎解释。`;
+      timeoutNote.classList.remove("hidden");
+    } else {
+      timeoutNote.classList.add("hidden");
+      timeoutNote.textContent = "";
+    }
 
     drawObservedROC(falseAlarmRateRaw, hitRateRaw);
 
-    $("dSlider").value =
-      clamp(dPrime, 0, 3.5).toFixed(2);
-
-    $("cSlider").value =
-      clamp(criterionC, -2, 2).toFixed(2);
-
+    $("dSlider").value = clamp(dPrime, 0, 3.5).toFixed(2);
+    $("cSlider").value = clamp(判断标准C, -2, 2).toFixed(2);
     updateExplorer();
+
+    const run = {
+      run: state.runHistory.length + 1,
+      difficulty: cfg.difficulty,
+      targetP: cfg.targetP,
+      realizedP: cfg.realizedP,
+      total: cfg.nTotal,
+      valid: valid.length,
+      timeout,
+      dPrime,
+      c: 判断标准C,
+      accuracy,
+      meanRT
+    };
+
+    state.runHistory.push(run);
+    saveRunHistory();
+    renderRunHistory();
+
     showPage("results");
   }
 
@@ -730,7 +753,7 @@
     ctx.font = "13px sans-serif";
 
     ctx.fillText(
-      `Observed (${fa.toFixed(2)}, ${hit.toFixed(2)})`,
+      `经验点 (${fa.toFixed(2)}, ${hit.toFixed(2)})`,
       Math.min(xScale(fa) + 10, w - 170),
       Math.max(yScale(hit) - 10, 24)
     );
@@ -754,7 +777,7 @@
     // Equal-variance SDT:
     // noise mean = 0
     // signal mean = d'
-    // criterion location k = c + d'/2
+    // 判断标准 location k = c + d'/2
     const k = c + d / 2;
 
     const fa =
@@ -790,182 +813,91 @@
     const h = canvas.height;
 
     const margin = { l: 52, r: 24, t: 20, b: 36 };
-
     const innerW = w - margin.l - margin.r;
     const innerH = h - margin.t - margin.b;
 
-    const criterion = c + d / 2;
-
+    const 判断标准 = c + d / 2;
     const xmin = -3.5;
     const xmax = Math.max(3.5, d + 3.5);
 
     const xScale = (x) =>
-      margin.l +
-      ((x - xmin) / (xmax - xmin)) *
-        innerW;
+      margin.l + ((x - xmin) / (xmax - xmin)) * innerW;
 
     const yScale = (y) =>
-      h - margin.b -
-      (y * innerH) / 0.45;
+      h - margin.b - (y * innerH) / 0.45;
 
     const pdf = (x, mu) =>
-      Math.exp(-0.5 * (x - mu) ** 2) /
-      Math.sqrt(2 * Math.PI);
+      Math.exp(-0.5 * (x - mu) ** 2) / Math.sqrt(2 * Math.PI);
 
     ctx.clearRect(0, 0, w, h);
-
     ctx.fillStyle = "#08121e";
     ctx.fillRect(0, 0, w, h);
 
     ctx.strokeStyle = "#183149";
-
     for (let i = 0; i <= 5; i++) {
-      const y =
-        margin.t +
-        (innerH * i) / 5;
-
+      const y = margin.t + (innerH * i) / 5;
       ctx.beginPath();
       ctx.moveTo(margin.l, y);
       ctx.lineTo(w - margin.r, y);
       ctx.stroke();
     }
 
-    shadeDistribution(
-      ctx,
-      criterion,
-      xmax,
-      (x) => pdf(x, 0),
-      xScale,
-      yScale,
-      h,
-      margin,
-      "rgba(124,215,255,.10)"
-    );
+    // Four SDT outcome regions: CR/FA under noise, Miss/Hit under signal.
+    shadeRange(ctx, xmin, 判断标准, (x) => pdf(x, 0), xScale, yScale, h, margin, "rgba(124,215,255,.08)");
+    shadeRange(ctx, 判断标准, xmax, (x) => pdf(x, 0), xScale, yScale, h, margin, "rgba(255,126,140,.10)");
+    shadeRange(ctx, xmin, 判断标准, (x) => pdf(x, d), xScale, yScale, h, margin, "rgba(255,201,107,.08)");
+    shadeRange(ctx, 判断标准, xmax, (x) => pdf(x, d), xScale, yScale, h, margin, "rgba(126,224,181,.10)");
 
-    shadeDistribution(
-      ctx,
-      criterion,
-      xmax,
-      (x) => pdf(x, d),
-      xScale,
-      yScale,
-      h,
-      margin,
-      "rgba(184,166,255,.11)"
-    );
-
-    drawFunctionCurve(
-      ctx,
-      (x) => pdf(x, 0),
-      xmin,
-      xmax,
-      xScale,
-      yScale,
-      "#7cd7ff",
-      3
-    );
-
-    drawFunctionCurve(
-      ctx,
-      (x) => pdf(x, d),
-      xmin,
-      xmax,
-      xScale,
-      yScale,
-      "#b8a6ff",
-      3
-    );
+    drawFunctionCurve(ctx, (x) => pdf(x, 0), xmin, xmax, xScale, yScale, "#7cd7ff", 3);
+    drawFunctionCurve(ctx, (x) => pdf(x, d), xmin, xmax, xScale, yScale, "#b8a6ff", 3);
 
     ctx.strokeStyle = "#ffc96b";
     ctx.lineWidth = 2;
     ctx.setLineDash([6, 6]);
-
     ctx.beginPath();
-    ctx.moveTo(
-      xScale(criterion),
-      margin.t
-    );
-
-    ctx.lineTo(
-      xScale(criterion),
-      h - margin.b
-    );
-
+    ctx.moveTo(xScale(判断标准), margin.t);
+    ctx.lineTo(xScale(判断标准), h - margin.b);
     ctx.stroke();
     ctx.setLineDash([]);
 
     ctx.fillStyle = "#dceaff";
     ctx.font = "13px sans-serif";
-
-    ctx.fillText(
-      "Noise",
-      xScale(0) - 20,
-      yScale(pdf(0, 0)) - 10
-    );
-
-    ctx.fillText(
-      "Signal",
-      xScale(d) - 20,
-      yScale(pdf(d, d)) - 10
-    );
+    ctx.fillText("噪声", xScale(0) - 18, yScale(pdf(0, 0)) - 10);
+    ctx.fillText("信号", xScale(d) - 18, yScale(pdf(d, d)) - 10);
 
     ctx.fillStyle = "#ffc96b";
+    ctx.fillText("判断标准", Math.min(xScale(判断标准) + 8, w - 90), margin.t + 18);
 
-    ctx.fillText(
-      "criterion",
-      Math.min(
-        xScale(criterion) + 8,
-        w - 86
-      ),
-      margin.t + 18
-    );
+    ctx.font = "12px sans-serif";
+    const leftX = xScale(Math.max(xmin + 0.7, 判断标准 - 1.25));
+    const rightX = xScale(Math.min(xmax - 1.0, 判断标准 + 0.55));
+
+    ctx.fillStyle = "#8fdcff";
+    ctx.fillText("正确拒绝", leftX, h - margin.b - 54);
+    ctx.fillStyle = "#ff9aa5";
+    ctx.fillText("虚警", rightX, h - margin.b - 54);
+    ctx.fillStyle = "#ffd98e";
+    ctx.fillText("漏报", leftX, h - margin.b - 32);
+    ctx.fillStyle = "#9ce7c7";
+    ctx.fillText("命中", rightX, h - margin.b - 32);
 
     ctx.fillStyle = "#9db0c5";
-    ctx.font = "12px sans-serif";
-
-    ctx.fillText(
-      "internal evidence",
-      w / 2 - 40,
-      h - 10
-    );
+    ctx.fillText("内部证据", w / 2 - 28, h - 10);
   }
 
-  function shadeDistribution(
-    ctx,
-    from,
-    to,
-    fn,
-    xScale,
-    yScale,
-    h,
-    margin,
-    color
-  ) {
-    if (from >= to) return;
+  function shadeRange(ctx, from, to, fn, xScale, yScale, h, margin, color) {
+    if (!Number.isFinite(from) || !Number.isFinite(to) || from >= to) return;
 
     ctx.beginPath();
-    ctx.moveTo(
-      xScale(from),
-      h - margin.b
-    );
+    ctx.moveTo(xScale(from), h - margin.b);
 
-    const step =
-      (to - from) / 100;
-
+    const step = Math.max((to - from) / 100, 0.01);
     for (let x = from; x <= to; x += step) {
-      ctx.lineTo(
-        xScale(x),
-        yScale(fn(x))
-      );
+      ctx.lineTo(xScale(x), yScale(fn(x)));
     }
 
-    ctx.lineTo(
-      xScale(to),
-      h - margin.b
-    );
-
+    ctx.lineTo(xScale(to), h - margin.b);
     ctx.closePath();
-
     ctx.fillStyle = color;
     ctx.fill();
   }
@@ -1130,7 +1062,7 @@
     ctx.font = "12px sans-serif";
 
     ctx.fillText(
-      "False Alarm Rate",
+      "虚警率",
       w / 2 - 42,
       h - 10
     );
@@ -1145,12 +1077,152 @@
     ctx.rotate(-Math.PI / 2);
 
     ctx.fillText(
-      "Hit Rate",
+      "命中率",
       0,
       0
     );
 
     ctx.restore();
+  }
+
+  function resetExplorerToObserved() {
+    $("dSlider").value = clamp(state.lastResult.dPrime, 0, 3.5).toFixed(2);
+    $("cSlider").value = clamp(state.lastResult.c, -2, 2).toFixed(2);
+    updateExplorer();
+  }
+
+  function loadRunHistory() {
+    try {
+      const raw = sessionStorage.getItem("transitwatch_run_history");
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function saveRunHistory() {
+    try {
+      sessionStorage.setItem("transitwatch_run_history", JSON.stringify(state.runHistory));
+    } catch (error) {
+      // Session storage is optional; the current page still works without it.
+    }
+  }
+
+  function renderRunHistory() {
+    const empty = $("runHistoryEmpty");
+    const content = $("runHistoryContent");
+    const body = $("runHistoryBody");
+
+    if (!empty || !content || !body) return;
+
+    if (!state.runHistory.length) {
+      empty.classList.remove("hidden");
+      content.classList.add("hidden");
+      return;
+    }
+
+    empty.classList.add("hidden");
+    content.classList.remove("hidden");
+
+    body.innerHTML = state.runHistory.map((r, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td>${difficultyLabel(r.difficulty)}</td>
+        <td>${(r.targetP * 100).toFixed(0)}%</td>
+        <td>${(r.realizedP * 100).toFixed(1)}%</td>
+        <td>${Number(r.dPrime).toFixed(2)}</td>
+        <td>${Number(r.c).toFixed(2)}</td>
+        <td>${(r.accuracy * 100).toFixed(1)}%</td>
+        <td>${r.meanRT} ms</td>
+        <td>${r.timeout}</td>
+      </tr>
+    `).join("");
+
+    drawHistoryChart($("dprimeHistoryChart"), state.runHistory.map(r => r.dPrime), "d′");
+    drawHistoryChart($("判断标准HistoryChart"), state.runHistory.map(r => r.c), "c", true);
+  }
+
+  function drawHistoryChart(canvas, values, label, includeZero = false) {
+    if (!canvas || !values.length) return;
+    const ctx = canvas.getContext("2d");
+    const w = canvas.width;
+    const h = canvas.height;
+    const m = { l: 48, r: 18, t: 20, b: 42 };
+    const iw = w - m.l - m.r;
+    const ih = h - m.t - m.b;
+
+    const finite = values.map(Number).filter(Number.isFinite);
+    if (!finite.length) return;
+
+    let minV = Math.min(...finite);
+    let maxV = Math.max(...finite);
+    if (includeZero) {
+      minV = Math.min(minV, 0);
+      maxV = Math.max(maxV, 0);
+    }
+    if (Math.abs(maxV - minV) < 0.2) {
+      maxV += 0.2;
+      minV -= 0.2;
+    }
+    const pad = (maxV - minV) * 0.18;
+    minV -= pad;
+    maxV += pad;
+
+    const x = (i) => m.l + (values.length === 1 ? iw / 2 : i * iw / (values.length - 1));
+    const y = (v) => m.t + (maxV - v) / (maxV - minV) * ih;
+
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = "#08121e";
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.strokeStyle = "#183149";
+    for (let j = 0; j <= 4; j++) {
+      const gy = m.t + j * ih / 4;
+      ctx.beginPath();
+      ctx.moveTo(m.l, gy);
+      ctx.lineTo(w - m.r, gy);
+      ctx.stroke();
+
+      const val = maxV - j * (maxV - minV) / 4;
+      ctx.fillStyle = "#9db0c5";
+      ctx.font = "11px sans-serif";
+      ctx.fillText(val.toFixed(2), 7, gy + 4);
+    }
+
+    if (includeZero && minV < 0 && maxV > 0) {
+      ctx.strokeStyle = "rgba(255,201,107,.45)";
+      ctx.setLineDash([4, 5]);
+      ctx.beginPath();
+      ctx.moveTo(m.l, y(0));
+      ctx.lineTo(w - m.r, y(0));
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    ctx.strokeStyle = "#7cd7ff";
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    values.forEach((v, i) => {
+      if (i === 0) ctx.moveTo(x(i), y(v));
+      else ctx.lineTo(x(i), y(v));
+    });
+    ctx.stroke();
+
+    values.forEach((v, i) => {
+      ctx.fillStyle = "#b8a6ff";
+      ctx.beginPath();
+      ctx.arc(x(i), y(v), 5, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.fillStyle = "#9db0c5";
+      ctx.font = "11px sans-serif";
+      ctx.fillText(`第${i + 1}轮`, x(i) - 16, h - 15);
+    });
+
+    ctx.fillStyle = "#dceaff";
+    ctx.font = "12px sans-serif";
+    ctx.fillText(label, 10, 16);
   }
 
   // -----------------------------
