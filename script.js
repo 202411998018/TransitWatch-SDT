@@ -789,17 +789,18 @@
     const auc =
       normalCDF(d / Math.sqrt(2));
 
-    $("theoryHit").textContent =
-      hit.toFixed(2);
+    const cr = 1 - fa;
+    const miss = 1 - hit;
 
-    $("theoryFA").textContent =
-      fa.toFixed(2);
+    $("theoryHit").textContent = hit.toFixed(2);
+    $("theoryFA").textContent = fa.toFixed(2);
+    $("theoryC").textContent = c.toFixed(2);
+    $("theoryAuc").textContent = auc.toFixed(2);
 
-    $("theoryC").textContent =
-      c.toFixed(2);
-
-    $("theoryAuc").textContent =
-      auc.toFixed(2);
+    $("theoryCR").textContent = cr.toFixed(2);
+    $("theoryFAArea").textContent = fa.toFixed(2);
+    $("theoryMiss").textContent = miss.toFixed(2);
+    $("theoryHitArea").textContent = hit.toFixed(2);
 
     drawDistributionChart(d, c);
     drawROCChart(d, fa, hit);
@@ -843,10 +844,10 @@
     }
 
     // Four SDT outcome regions: CR/FA under noise, Miss/Hit under signal.
-    shadeRange(ctx, xmin, criterion, (x) => pdf(x, 0), xScale, yScale, h, margin, "rgba(124,215,255,.08)");
-    shadeRange(ctx, criterion, xmax, (x) => pdf(x, 0), xScale, yScale, h, margin, "rgba(255,126,140,.10)");
-    shadeRange(ctx, xmin, criterion, (x) => pdf(x, d), xScale, yScale, h, margin, "rgba(255,201,107,.08)");
-    shadeRange(ctx, criterion, xmax, (x) => pdf(x, d), xScale, yScale, h, margin, "rgba(126,224,181,.10)");
+    shadeRange(ctx, xmin, criterion, (x) => pdf(x, 0), xScale, yScale, h, margin, "rgba(124,215,255,.14)");
+    shadeRange(ctx, criterion, xmax, (x) => pdf(x, 0), xScale, yScale, h, margin, "rgba(255,126,140,.16)");
+    shadeRange(ctx, xmin, criterion, (x) => pdf(x, d), xScale, yScale, h, margin, "rgba(255,201,107,.14)");
+    shadeRange(ctx, criterion, xmax, (x) => pdf(x, d), xScale, yScale, h, margin, "rgba(126,224,181,.16)");
 
     drawFunctionCurve(ctx, (x) => pdf(x, 0), xmin, xmax, xScale, yScale, "#7cd7ff", 3);
     drawFunctionCurve(ctx, (x) => pdf(x, d), xmin, xmax, xScale, yScale, "#b8a6ff", 3);
@@ -868,21 +869,75 @@
     ctx.fillStyle = "#ffc96b";
     ctx.fillText("判断标准", Math.min(xScale(criterion) + 8, w - 90), margin.t + 18);
 
-    ctx.font = "12px sans-serif";
-    const leftX = xScale(Math.max(xmin + 0.7, criterion - 1.25));
-    const rightX = xScale(Math.min(xmax - 1.0, criterion + 0.55));
+    const cr = normalCDF(criterion);
+    const fa = 1 - cr;
+    const miss = normalCDF(criterion - d);
+    const hit = 1 - miss;
 
-    ctx.fillStyle = "#8fdcff";
-    ctx.fillText("正确拒绝", leftX, h - margin.b - 54);
-    ctx.fillStyle = "#ff9aa5";
-    ctx.fillText("虚警", rightX, h - margin.b - 54);
-    ctx.fillStyle = "#ffd98e";
-    ctx.fillText("漏报", leftX, h - margin.b - 32);
-    ctx.fillStyle = "#9ce7c7";
-    ctx.fillText("命中", rightX, h - margin.b - 32);
+    // Place each label at the probability-mass centroid of its own shaded region.
+    // This makes the labels move with both d′ and the criterion instead of staying fixed.
+    const crX = truncatedNormalMean(0, criterion, "left");
+    const faX = truncatedNormalMean(0, criterion, "right");
+    const missX = truncatedNormalMean(d, criterion, "left");
+    const hitX = truncatedNormalMean(d, criterion, "right");
+
+    drawOutcomeTag(ctx, "正确拒绝", cr, crX, h - margin.b - 62, xScale, xmin, xmax, "#8fdcff");
+    drawOutcomeTag(ctx, "虚警", fa, faX, h - margin.b - 62, xScale, xmin, xmax, "#ff9aa5");
+    drawOutcomeTag(ctx, "漏报", miss, missX, h - margin.b - 30, xScale, xmin, xmax, "#ffd98e");
+    drawOutcomeTag(ctx, "命中", hit, hitX, h - margin.b - 30, xScale, xmin, xmax, "#9ce7c7");
 
     ctx.fillStyle = "#9db0c5";
+    ctx.font = "12px sans-serif";
     ctx.fillText("内部证据", w / 2 - 28, h - 10);
+  }
+
+  function standardNormalPDF(x) {
+    return Math.exp(-0.5 * x * x) / Math.sqrt(2 * Math.PI);
+  }
+
+  function truncatedNormalMean(mu, criterion, side) {
+    const a = criterion - mu;
+    const leftP = normalCDF(a);
+    const rightP = 1 - leftP;
+    const phi = standardNormalPDF(a);
+
+    if (side === "left") {
+      if (leftP < 0.015) return criterion - 0.25;
+      return mu - phi / leftP;
+    }
+
+    if (rightP < 0.015) return criterion + 0.25;
+    return mu + phi / rightP;
+  }
+
+  function drawOutcomeTag(ctx, label, probability, evidenceX, y, xScale, xmin, xmax, color) {
+    // Tiny areas are better represented by the live values below the chart than by
+    // squeezing a label into a nearly invisible tail.
+    if (probability < 0.035) return;
+
+    const safeX = clamp(evidenceX, xmin + 0.35, xmax - 0.35);
+    const x = xScale(safeX);
+    const text = `${label} ${Math.round(probability * 100)}%`;
+
+    ctx.save();
+    ctx.font = "bold 11px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const textW = ctx.measureText(text).width;
+    const boxW = textW + 12;
+    const boxH = 20;
+
+    ctx.fillStyle = "rgba(8,18,30,.82)";
+    ctx.fillRect(x - boxW / 2, y - boxH / 2, boxW, boxH);
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x - boxW / 2, y - boxH / 2, boxW, boxH);
+
+    ctx.fillStyle = color;
+    ctx.fillText(text, x, y);
+    ctx.restore();
   }
 
   function shadeRange(ctx, from, to, fn, xScale, yScale, h, margin, color) {
