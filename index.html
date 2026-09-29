@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>TransitWatch · 系外行星凌星检测实验</title>
-  <link rel="stylesheet" href="style.css?v=20260930b" />
+  <link rel="stylesheet" href="style.css?v=20260930c" />
 </head>
 <body>
   <div class="shell">
@@ -337,6 +337,12 @@
                   <div><h3>信号 / 噪声分布</h3><span>黄色虚线为判断标准</span></div>
                 </div>
                 <canvas id="distChart" width="680" height="320"></canvas>
+                <div class="sdt-area-stats">
+                  <div class="sdt-area-item cr"><span>正确拒绝</span><b id="theoryCR">0.50</b></div>
+                  <div class="sdt-area-item fa"><span>虚警</span><b id="theoryFAArea">0.50</b></div>
+                  <div class="sdt-area-item miss"><span>漏报</span><b id="theoryMiss">0.50</b></div>
+                  <div class="sdt-area-item hit"><span>命中</span><b id="theoryHitArea">0.50</b></div>
+                </div>
               </div>
               <div class="chart-card">
                 <div class="chart-head">
@@ -395,6 +401,6 @@
     </main>
   </div>
 
-  <script src="script.js?v=20260930b"></script>
+  <script src="script.js?v=20260930c"></script>
 </body>
 </html>
